@@ -84,6 +84,10 @@ static void TTFToggleHinting(bool)
         TTFFontDescriptor* fontDesc = &(gCurrentTTFFontSet->size[i]);
         bool use_hinting = Config::Get().fonts.enableHinting && fontDesc->hinting_threshold;
         TTF_SetFontHinting(fontDesc->font, use_hinting ? 1 : 0);
+        if (fontDesc->unscaledFont != nullptr)
+        {
+            TTF_SetFontHinting(fontDesc->unscaledFont, use_hinting ? 1 : 0);
+        }
     }
 
     if (_ttfSurfaceCacheCount)
@@ -124,6 +128,8 @@ bool TTFInitialise()
             LOG_VERBOSE("Unable to load '%s'", fontPath.c_str());
             return false;
         }
+
+        fontDesc->unscaledFont = TTFOpenFont(fontPath.c_str(), fontDesc->ptSize);
     }
 
     TTFToggleHinting(true);
@@ -151,6 +157,11 @@ void TTFReinitialise()
             TTFCloseFont(fontDesc->font);
             fontDesc->font = nullptr;
         }
+        if (fontDesc->unscaledFont != nullptr)
+        {
+            TTFCloseFont(fontDesc->unscaledFont);
+            fontDesc->unscaledFont = nullptr;
+        }
     }
 
     for (int32_t i = 0; i < FontStyleCount; i++)
@@ -171,6 +182,8 @@ void TTFReinitialise()
         {
             LOG_VERBOSE("Unable to load '%s'", fontPath.c_str());
         }
+
+        fontDesc->unscaledFont = TTFOpenFont(fontPath.c_str(), fontDesc->ptSize);
     }
 
     TTFToggleHinting(true);
@@ -193,6 +206,11 @@ void TTFDispose()
         {
             TTFCloseFont(fontDesc->font);
             fontDesc->font = nullptr;
+        }
+        if (fontDesc->unscaledFont != nullptr)
+        {
+            TTFCloseFont(fontDesc->unscaledFont);
+            fontDesc->unscaledFont = nullptr;
         }
     }
 

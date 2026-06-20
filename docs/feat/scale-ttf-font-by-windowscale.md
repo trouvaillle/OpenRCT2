@@ -50,10 +50,11 @@ _height = static_cast<int32_t>(height / Config::Get().general.windowScale);
 |--------|------|--------|
 | `ptSize *= windowScale` **단독** | 폰트가 너무 큼 (3x line height) | 캔버스 축소 + 폰트 확대의 **2중 적용** — 12pt→36pt on 640→360 → display에서 108pt |
 | `FT_LOAD_NO_BITMAP` **단독** | 세로줄은 없어졌지만 폰트가 흐림 | 12pt 아웃라인을 nearest-neighbor로 2x 업스케일 → soft outline이 blocky해져 흐려 보임 |
+| **Shader bilinear + contrast boost** (최종) | bitmap-like 선명도 + 모든 zoom에서 texel 누락 없음 | `usampler2DArray`는 LINEAR 미지원 → `texelFetch`로 직접 구현 |
 
 ## 해결 방법
 
-### 최종 설계: ptSize 스케일 + quad 역보정 + fZoom
+### 최종 설계: ptSize 스케일 + quad 역보정 + fZoom + Shader bilinear 보간
 
 `ptSize`를 스케일링하여 고해상도 glyph texture를 생성하지만, quad 크기는 역보정하여 canvas 공간을 유지하고, fragment shader의 `fZoom` 파라미터로 texel 매핑을 조정한다.
 
