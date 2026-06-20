@@ -586,8 +586,19 @@ static void DrawTTFBitmapInternal(
 {
     assert(rt.zoom_level == ZoomLevel{ 0 });
     const int32_t surfaceWidth = surface->w;
-    int32_t width = surfaceWidth;
-    int32_t height = surface->h;
+    const int32_t surfaceHeight = surface->h;
+    auto srcBase = static_cast<const uint8_t*>(surface->pixels);
+
+    float scale = std::max(1.0f, Config::Get().general.windowScale);
+    int32_t width = static_cast<int32_t>(surfaceWidth / scale);
+    int32_t height = static_cast<int32_t>(surfaceHeight / scale);
+    if (width < 1)
+        width = 1;
+    if (height < 1)
+        height = 1;
+
+    float stepX = static_cast<float>(surfaceWidth) / static_cast<float>(width);
+    float stepY = static_cast<float>(surfaceHeight) / static_cast<float>(height);
 
     const int32_t overflowX = (rt.x + rt.width) - (x + width);
     const int32_t overflowY = (rt.y + rt.height) - (y + height);
@@ -598,41 +609,45 @@ static void DrawTTFBitmapInternal(
     int32_t skipX = x - rt.x;
     int32_t skipY = y - rt.y;
 
-    auto src = static_cast<const uint8_t*>(surface->pixels);
     PaletteIndex* dst = reinterpret_cast<PaletteIndex*>(rt.bits);
 
+    float srcSkipX = 0.0f;
+    float srcSkipY = 0.0f;
     if (skipX < 0)
     {
         width += skipX;
-        src += -skipX;
+        srcSkipX = static_cast<float>(-skipX) * stepX;
         skipX = 0;
     }
     if (skipY < 0)
     {
         height += skipY;
-        src += (-skipY * surfaceWidth);
+        srcSkipY = static_cast<float>(-skipY) * stepY;
         skipY = 0;
     }
 
     dst += skipX;
     dst += skipY * rt.LineStride();
 
-    const int32_t srcScanSkip = surfaceWidth - width;
     const int32_t dstScanSkip = rt.LineStride() - width;
     for (int32_t yy = 0; yy < height; yy++)
     {
+        int32_t srcY = static_cast<int32_t>(static_cast<float>(yy) * stepY + srcSkipY);
+        const uint8_t* srcRow = srcBase + srcY * surfaceWidth;
         for (int32_t xx = 0; xx < width; xx++)
         {
-            if (*src != 0)
+            int32_t srcX = static_cast<int32_t>(static_cast<float>(xx) * stepX + srcSkipX);
+            uint8_t value = srcRow[srcX];
+            if (value != 0)
             {
                 if constexpr (TUseHinting)
                 {
-                    if (*src > 180)
+                    if (value > 180)
                     {
                         // Centre of the glyph: use full colour.
                         *dst = colour;
                     }
-                    else if (*src > hintingThreshold)
+                    else if (value > hintingThreshold)
                     {
                         *dst = BlendColours(colour, *dst);
                     }
@@ -642,10 +657,8 @@ static void DrawTTFBitmapInternal(
                     *dst = colour;
                 }
             }
-            src++;
             dst++;
         }
-        src += srcScanSkip;
         dst += dstScanSkip;
     }
 }
