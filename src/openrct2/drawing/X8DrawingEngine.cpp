@@ -632,12 +632,37 @@ static void DrawTTFBitmapInternal(
     const int32_t dstScanSkip = rt.LineStride() - width;
     for (int32_t yy = 0; yy < height; yy++)
     {
-        int32_t srcY = static_cast<int32_t>(static_cast<float>(yy) * stepY + srcSkipY);
-        const uint8_t* srcRow = srcBase + srcY * surfaceWidth;
+        float srcY = (static_cast<float>(yy) + 0.5f) * stepY + srcSkipY - 0.5f;
+        int iy = static_cast<int>(srcY);
+        if (iy < 0) iy = 0;
+        if (iy >= surfaceHeight - 1) iy = surfaceHeight - 2;
+        float fy = srcY - static_cast<float>(iy);
+        int row0Base = iy * surfaceWidth;
+        int row1Base = (iy + 1) * surfaceWidth;
+
         for (int32_t xx = 0; xx < width; xx++)
         {
-            int32_t srcX = static_cast<int32_t>(static_cast<float>(xx) * stepX + srcSkipX);
-            uint8_t value = srcRow[srcX];
+            float srcX = (static_cast<float>(xx) + 0.5f) * stepX + srcSkipX - 0.5f;
+            int ix = static_cast<int>(srcX);
+            if (ix < 0) ix = 0;
+            if (ix >= surfaceWidth - 1) ix = surfaceWidth - 2;
+            float fx = srcX - static_cast<float>(ix);
+
+            float tl = static_cast<float>(srcBase[row0Base + ix]);
+            float tr = static_cast<float>(srcBase[row0Base + ix + 1]);
+            float bl = static_cast<float>(srcBase[row1Base + ix]);
+            float br = static_cast<float>(srcBase[row1Base + ix + 1]);
+
+            float top = (1.0f - fx) * tl + fx * tr;
+            float bot = (1.0f - fx) * bl + fx * br;
+            float valueF = (1.0f - fy) * top + fy * bot;
+
+            uint8_t value;
+            if (valueF < 100.0f)
+                value = 0;
+            else
+                value = static_cast<uint8_t>(std::min(255.0f, valueF * 3.0f));
+
             if (value != 0)
             {
                 if constexpr (TUseHinting)
