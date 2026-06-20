@@ -184,19 +184,20 @@ auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->unscaledFont, text);
 
 이로써 UI 텍스트는 스케일링된 고해상도 glyph를, signboard 텍스트는 원본 크기 glyph를 사용한다.
 
-#### 8. Software(X8) 렌더러 subsampling
+#### 8. Software(X8) 렌더러 bilinear + bitmap cutoff
 
-Software path (`X8DrawingEngine`)는 OpenGL과 달리 shader zoom이 없으므로, `DrawTTFBitmapInternal`에서 직접 subsampling한다:
+Software path (`X8DrawingEngine`)는 OpenGL과 달리 shader zoom이 없으므로, `DrawTTFBitmapInternal`에서 직접 bilinear 보간 + contrast boost를 적용한다. OpenGL shader와 동일한 offset 공식을 사용:
 
 ```cpp
-float stepX = float(surfaceWidth) / float(width);  // width = surfaceWidth / scale
-for each canvas pixel (xx, yy):
-    srcX = int(xx * stepX);  // nearest-neighbor subsampling
-    srcY = int(yy * stepY);
-    value = srcBase[srcY * surfaceWidth + srcX];
+float srcX = (xx + 0.5f) * stepX + srcSkipX - 0.5f;  // fract=0.5 at integer zoom
+float srcY = (yy + 0.5f) * stepY + srcSkipY - 0.5f;
+// Bilinear interpolation of 4 source texels
+float valueF = bilerp(srcBase, srcX, srcY, surfaceWidth);
+// Contrast boost + hard cutoff
+value = (valueF < 100.0f) ? 0 : min(255, int(valueF * 3));
 ```
 
-At 2x: 24px surface → 12px canvas → 24px display. font가 24pt로 렌더링되었으므로 subsampling해도 12pt와 같은 품질.
+At 2x: 24px surface → 12px canvas, 각 canvas pixel은 2 source texel의 50/50 blend → comb effect 제거.
 
 ### Z-order 보존
 
