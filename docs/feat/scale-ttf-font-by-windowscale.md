@@ -151,9 +151,18 @@ texel = uint(min(255.0, float(texel) * 2.0));  // contrast boost
 - zoom=3.0 → offset=-1.0 → texelPos = n·3.0 + 0.5 → fract=0.5 (texel 50/50 blend)
 - 모든 정수 zoom에서 fract=0.5 보장 → texel 누락 없음
 
-**Contrast boost**: bilinear blend는 thin stroke의 alpha를 반으로 줄이는데 (예: 64→32), hinting threshold(기본 15) 이하로 떨어지면 stroke가 사라진다. `*2.0`으로 복원 (64→128, 127→254).
+**Contrast boost + hard bitmap cutoff**: bilinear blend는 thin stroke의 alpha를 반으로 줄이는데 (예: 64→32), hinting threshold(기본 15) 이하로 떨어지면 stroke가 사라진다. `*3.0`으로 복원 + **hard cutoff 100**: boosted value < 100 → transparent.
 
-**1x에서는 NEAREST 유지**: `fZoom > 1.001f`일 때만 bilinear; 1x에서는 원래 `floor(position)` 기반 NEAREST로 선명도 유지.
+```
+FreeType edge:  [0,  40,  80,  120, 200, 255]
+After bilinear: 20, 60,  100, 160, 227, 255
+After ×3:       60, 180, 255, 255, 255, 255
+Cutoff at 100:  ✗   ✓    ✓    ✓    ✓    ✓    → 4px edge (sharp)
+```
+
+Without cutoff: 5-6px edge (blurry/AA look). With cutoff: 3-4px edge (bitmap-like).
+
+**1x에서는 NEAREST 유지**: `fZoom > 1.001f`일 때만 bilinear + cutoff; 1x에서는 원래 `floor(position)` 기반 NEAREST로 선명도 유지.
 
 #### 7. Signboard(전광판) unscaledFont 분리
 
@@ -184,7 +193,7 @@ auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->unscaledFont, text);
 | 문제 | ptSize 단독 | FT_LOAD_NO_BITMAP 단독 | **최종(zoom+bounds+shader)** |
 |------|------------|----------------------|--------------------------|
 | 폰트 크기 | **3x line height** (너무 큼) | 정상 | **정상** (canvas 공간 유지) |
-| 선명도 | 선명 (outline) | **흐림** (12pt outline upscale) | **선명** (고해상도 glyph + bilinear) |
+| 선명도 | 선명 (outline) | **흐림** (12pt outline upscale) | **선명** (고해상도 glyph + bilinear + bitmap cutoff) |
 | Z-order | 문제 없음 | 문제 없음 | **문제 없음** (동일 FBO) |
 | 런타임 변경 | TTFReinitialise 필요 | 불필요 | **TTFReinitialise** |
 | 전광판 크기 | 영향 받음 | N/A | **unscaledFont 분리로 정상** |
@@ -210,7 +219,7 @@ auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->unscaledFont, text);
 | `src/openrct2/drawing/Drawing.String.cpp` | cursor advance `/ scale` | 텍스트 레이아웃 canvas 공간 보정 |
 | `src/openrct2-ui/.../OpenGLDrawingEngine.cpp` | `bounds /= scale`, `zoom = scale` | quad 크기 + shader texel 보정 |
 | `src/openrct2-ui/UiContext.cpp` | `#include <TTF.h>`, delta-gated `TTFReinitialise()` | 런타임 스케일 변경 |
-| `data/shaders/drawrect.frag` | TTF 전용 bilinear 경로: offset `0.5*(1-fZoom)`, contrast boost ×2, at 1x NEAREST | 모든 zoom에서 texel coverage 보장 + thin stroke 보존 |
+| `data/shaders/drawrect.frag` | TTF 전용 bilinear 경로: offset `0.5*(1-fZoom)`, contrast boost ×3 + hard cutoff 100, at 1x NEAREST | 모든 zoom에서 texel coverage + bitmap-style sharp edge |
 | `src/openrct2/drawing/Font.h` | `TTF_Font* unscaledFont` 필드 추가 | unscaled font storage |
 | `src/openrct2/drawing/ScrollingText.cpp` | `fontDesc->unscaledFont` 사용 | signboard text 원본 크기 유지 |
 | `test/tests/TTFTests.cpp` | TTFReinitialise 안전성 테스트 | 테스트 커버리지 |
@@ -228,7 +237,7 @@ Display (24px):            █████████████████�
 ### 변경 전후 diff 요약
 
 ```
-11 files changed, 192 insertions(+), 76 deletions(-)
+12 files changed, 195 insertions(+), 77 deletions(-)
 ```
 
 ## 코드 리뷰
@@ -247,7 +256,7 @@ Display (24px):            █████████████████�
 1. `TTFReinitialise` null 체크 — `TTFOpenFont` 실패 시에도 `continue`로 진행
 2. `surface->w`를 직접 변경하지 않고 지역 변수로 `/ scale` — 캐시 무결성 유지
 3. Shader offset 공식 `0.5 * (1.0 - fZoom)` — 모든 zoom에서 fract=0.5 보장; `-0.5`는 홀수 zoom(3x)에서 texel 건너뜀
-4. Contrast boost ×2 — bilinear blend로 약해진 thin stroke 복원
+4. Contrast boost ×3 + hard cutoff 100 — bilinear blend로 약해진 thin stroke 복원 + bitmap-style sharp edge
 5. `unscaledFont` — signboard 등 world-space rendering에 사용; UI text는 `font`(scaled) 유지
 
 ## 후속 이슈
