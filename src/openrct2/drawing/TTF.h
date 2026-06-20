@@ -14,6 +14,7 @@
 #include <string_view>
 
 bool TTFInitialise();
+void TTFReinitialise();
 void TTFDispose();
 struct TTFSurface;
 

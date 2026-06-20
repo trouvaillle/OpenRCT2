@@ -116,7 +116,9 @@ bool TTFInitialise()
             return false;
         }
 
-        fontDesc->font = TTFOpenFont(fontPath.c_str(), fontDesc->ptSize);
+        float scale = std::max(1.0f, Config::Get().general.windowScale);
+        int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);
+        fontDesc->font = TTFOpenFont(fontPath.c_str(), scaledSize);
         if (fontDesc->font == nullptr)
         {
             LOG_VERBOSE("Unable to load '%s'", fontPath.c_str());
@@ -129,6 +131,49 @@ bool TTFInitialise()
     _ttfInitialised = true;
 
     return true;
+}
+
+void TTFReinitialise()
+{
+    DrawingUniqueLock<std::mutex> lock(_mutex);
+
+    if (!_ttfInitialised)
+        return;
+
+    TTFSurfaceCacheDisposeAll();
+    TTFGetWidthCacheDisposeAll();
+
+    for (int32_t i = 0; i < FontStyleCount; i++)
+    {
+        TTFFontDescriptor* fontDesc = &(gCurrentTTFFontSet->size[i]);
+        if (fontDesc->font != nullptr)
+        {
+            TTFCloseFont(fontDesc->font);
+            fontDesc->font = nullptr;
+        }
+    }
+
+    for (int32_t i = 0; i < FontStyleCount; i++)
+    {
+        TTFFontDescriptor* fontDesc = &(gCurrentTTFFontSet->size[i]);
+
+        auto fontPath = Platform::GetFontPath(*fontDesc);
+        if (fontPath.empty())
+        {
+            LOG_VERBOSE("Unable to find font '%s'", fontDesc->font_name);
+            continue;
+        }
+
+        float scale = std::max(1.0f, Config::Get().general.windowScale);
+        int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);
+        fontDesc->font = TTFOpenFont(fontPath.c_str(), scaledSize);
+        if (fontDesc->font == nullptr)
+        {
+            LOG_VERBOSE("Unable to load '%s'", fontPath.c_str());
+        }
+    }
+
+    TTFToggleHinting(true);
 }
 
 void TTFDispose()
@@ -368,6 +413,10 @@ bool TTFInitialise()
 }
 
 void TTFDispose()
+{
+}
+
+void TTFReinitialise()
 {
 }
 
