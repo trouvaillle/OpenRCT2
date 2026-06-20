@@ -78,7 +78,9 @@ void main()
                 float top = mix(float(tl), float(tr), f.x);
                 float bot = mix(float(bl), float(br), f.x);
                 texel = uint(mix(top, bot, f.y));
-                texel = uint(min(255.0, float(texel) * 2.0));
+                texel = uint(min(255.0, float(texel) * 3.0));
+                if (texel < 100u)
+                    texel = 0u;
             }
             else
             {
