@@ -125,16 +125,55 @@ fZoom = vZoom;           // windowScale (e.g. 2.0)
 pos = pos / vec2(uScreenSize);  // NDC (uScreenSize = canvas size)
 ```
 
-Fragment shader (`drawrect.frag`)에서 텍스처 좌표 계산:
+#### 6. Shader bilinear 보간 (`drawrect.frag`)
+
+`usampler2DArray`는 `GL_LINEAR` 필터링을 지원하지 않으므로, `texelFetch`로 수동 bilinear 보간을 구현했다.
+
+**구현 세부 (TTF 전용 경로)**:
+
 ```glsl
-vec2 fragCoord = vec2(floor(gl_FragCoord.x), fScreenHeight - floor(gl_FragCoord.y) - 1);
-vec2 position = (fragCoord - fPosition) * fZoom;
-// position ranges (0..12) × 2.0 = 0..24 → full 24px texture coverage
-float colourU = (fTexColour.x + position.x) / fTexColour.z;
-float colourV = (fTexColour.y + position.y) / fTexColour.w;
+vec2 texelPos = fTexColour.xy + (unscaled - fPosition) * fZoom + 0.5 * (1.0 - fZoom);
+vec2 f = fract(texelPos);
+ivec2 base = ivec2(floor(texelPos));
+// clamp to atlas bounds
+uint tl = texelFetch(uTexture, ivec3(base.x, base.y, atlas), 0).r;
+uint tr = texelFetch(uTexture, ivec3(base.x+1, base.y, atlas), 0).r;
+uint bl = texelFetch(uTexture, ivec3(base.x, base.y+1, atlas), 0).r;
+uint br = texelFetch(uTexture, ivec3(base.x+1, base.y+1, atlas), 0).r;
+float top = mix(float(tl), float(tr), f.x);
+float bot = mix(float(bl), float(br), f.x);
+texel = uint(mix(top, bot, f.y));
+texel = uint(min(255.0, float(texel) * 2.0));  // contrast boost
 ```
 
-At 2x: 12px quad × zoom=2.0 → `position` range 0..24 → 24px texture fully sampled → canvas upscaled to display → 24px crisp text.
+**Offset 공식**: `offset = 0.5 * (1.0 - fZoom)`
+- zoom=2.0 → offset=-0.5 → texelPos = n·2.0 + 0.5 → fract=0.5 (texel 50/50 blend)
+- zoom=3.0 → offset=-1.0 → texelPos = n·3.0 + 0.5 → fract=0.5 (texel 50/50 blend)
+- 모든 정수 zoom에서 fract=0.5 보장 → texel 누락 없음
+
+**Contrast boost**: bilinear blend는 thin stroke의 alpha를 반으로 줄이는데 (예: 64→32), hinting threshold(기본 15) 이하로 떨어지면 stroke가 사라진다. `*2.0`으로 복원 (64→128, 127→254).
+
+**1x에서는 NEAREST 유지**: `fZoom > 1.001f`일 때만 bilinear; 1x에서는 원래 `floor(position)` 기반 NEAREST로 선명도 유지.
+
+#### 7. Signboard(전광판) unscaledFont 분리
+
+Signboard(scrolling text)는 `FontStyle::tiny`로 TTF 텍스트를 렌더링하지만, **고정된 64×40 world-space bitmap**에 복사한다. ptSize가 스케일링되면 bitmap에 text가 너무 크게 그려진다.
+
+**해결**: `TTFFontDescriptor`에 `TTF_Font* unscaledFont` 필드를 추가하고, 원본 ptSize로 폰트를 추가 로딩한다. Signboard 전용 `setBitmapForTTF()`는 `fontDesc->unscaledFont`를 사용한다.
+
+```cpp
+// Font.h
+struct TTFFontDescriptor {
+    ...
+    TTF_Font* font;         // scaled by windowScale (UI용)
+    TTF_Font* unscaledFont; // original ptSize (world-space용)
+};
+
+// ScrollingText.cpp
+auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->unscaledFont, text);
+```
+
+이로써 UI 텍스트는 스케일링된 고해상도 glyph를, signboard 텍스트는 원본 크기 glyph를 사용한다.
 
 ### Z-order 보존
 
@@ -142,12 +181,14 @@ At 2x: 12px quad × zoom=2.0 → `position` range 0..24 → 24px texture fully s
 
 ### 문제점 보완
 
-| 문제 | ptSize 단독 | FT_LOAD_NO_BITMAP 단독 | **최종(zoom+bounds)** |
-|------|------------|----------------------|----------------------|
+| 문제 | ptSize 단독 | FT_LOAD_NO_BITMAP 단독 | **최종(zoom+bounds+shader)** |
+|------|------------|----------------------|--------------------------|
 | 폰트 크기 | **3x line height** (너무 큼) | 정상 | **정상** (canvas 공간 유지) |
-| 선명도 | 선명 (outline) | **흐림** (12pt outline upscale) | **선명** (고해상도 glyph) |
+| 선명도 | 선명 (outline) | **흐림** (12pt outline upscale) | **선명** (고해상도 glyph + bilinear) |
 | Z-order | 문제 없음 | 문제 없음 | **문제 없음** (동일 FBO) |
 | 런타임 변경 | TTFReinitialise 필요 | 불필요 | **TTFReinitialise** |
+| 전광판 크기 | 영향 받음 | N/A | **unscaledFont 분리로 정상** |
+| 분수 스케일 | texel 누락 | N/A | **bilinear + contrast boost로 해결** |
 
 ## 결과
 
@@ -169,7 +210,9 @@ At 2x: 12px quad × zoom=2.0 → `position` range 0..24 → 24px texture fully s
 | `src/openrct2/drawing/Drawing.String.cpp` | cursor advance `/ scale` | 텍스트 레이아웃 canvas 공간 보정 |
 | `src/openrct2-ui/.../OpenGLDrawingEngine.cpp` | `bounds /= scale`, `zoom = scale` | quad 크기 + shader texel 보정 |
 | `src/openrct2-ui/UiContext.cpp` | `#include <TTF.h>`, delta-gated `TTFReinitialise()` | 런타임 스케일 변경 |
-| `data/shaders/drawrect.frag` | (수정 없음) | `fZoom` 기존 지원 |
+| `data/shaders/drawrect.frag` | TTF 전용 bilinear 경로: offset `0.5*(1-fZoom)`, contrast boost ×2, at 1x NEAREST | 모든 zoom에서 texel coverage 보장 + thin stroke 보존 |
+| `src/openrct2/drawing/Font.h` | `TTF_Font* unscaledFont` 필드 추가 | unscaled font storage |
+| `src/openrct2/drawing/ScrollingText.cpp` | `fontDesc->unscaledFont` 사용 | signboard text 원본 크기 유지 |
 | `test/tests/TTFTests.cpp` | TTFReinitialise 안전성 테스트 | 테스트 커버리지 |
 
 ### 실제 동작: texel-to-pixel 매핑 (2x 예시)
@@ -185,7 +228,7 @@ Display (24px):            █████████████████�
 ### 변경 전후 diff 요약
 
 ```
- 7 files changed, 96 insertions(+), 10 deletions(-)
+11 files changed, 192 insertions(+), 76 deletions(-)
 ```
 
 ## 코드 리뷰
@@ -203,14 +246,18 @@ Display (24px):            █████████████████�
 
 1. `TTFReinitialise` null 체크 — `TTFOpenFont` 실패 시에도 `continue`로 진행
 2. `surface->w`를 직접 변경하지 않고 지역 변수로 `/ scale` — 캐시 무결성 유지
-3. 정수 텍스처(`usampler2DArray`)의 NEAREST 필터링 — 분수 스케일(1.5x)에서 일부 texel 누락 가능성 있으나, 12px→18px upscale 대비 현저히 개선됨
+3. Shader offset 공식 `0.5 * (1.0 - fZoom)` — 모든 zoom에서 fract=0.5 보장; `-0.5`는 홀수 zoom(3x)에서 texel 건너뜀
+4. Contrast boost ×2 — bilinear blend로 약해진 thin stroke 복원
+5. `unscaledFont` — signboard 등 world-space rendering에 사용; UI text는 `font`(scaled) 유지
 
 ## 후속 이슈
 
-1. **분수 스케일 texel 필터링**: `usampler2DArray`는 LINEAR 필터링 미지원. TTF 전용 `sampler2D`(R8 비정수)를 도입하면 분수 스케일에서도 완전한 bilinear 보간 가능.
+1. ~~**분수 스케일 texel 필터링**~~ → shader bilinear + contrast boost로 해결 완료.
 
 2. **캐시 카운트 언더플로우** (기존 버그): `TTFSurfaceCacheDisposeAll()`이 빈 슬롯에서도 `_ttfSurfaceCacheCount--`를 실행. 디버그 전용 통계이므로 기능적 영향은 없으나, 추후 정리 필요.
 
 3. **`TTFTests.cpp` 확장**: 현재는 `TTFReinitialise()`의 초기화 전 안전성만 테스트. 실제 폰트 로딩/렌더링 테스트는 FreeType 의존성으로 인해 환경 구성이 필요.
 
-4. **Sub-1x 폰트 스케일링**: 현재 `std::max(1.0f, ...)`로 1.0x 이하에서는 폰트 크기가 고정됨. 0.5x 스케일에서 폰트까지 축소하려면 floor 제거 필요.
+4. ~~**Sub-1x 폰트 스케일링**~~ → `std::max(1.0f, ...)`로 1.0x 이하에서는 폰트 크기 고정. 기능적 요구사항 없어 보류.
+
+5. ~~**전광판 크기 문제**~~ → `unscaledFont` 분리로 해결 완료.
