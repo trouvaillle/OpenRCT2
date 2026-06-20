@@ -184,6 +184,20 @@ auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->unscaledFont, text);
 
 이로써 UI 텍스트는 스케일링된 고해상도 glyph를, signboard 텍스트는 원본 크기 glyph를 사용한다.
 
+#### 8. Software(X8) 렌더러 subsampling
+
+Software path (`X8DrawingEngine`)는 OpenGL과 달리 shader zoom이 없으므로, `DrawTTFBitmapInternal`에서 직접 subsampling한다:
+
+```cpp
+float stepX = float(surfaceWidth) / float(width);  // width = surfaceWidth / scale
+for each canvas pixel (xx, yy):
+    srcX = int(xx * stepX);  // nearest-neighbor subsampling
+    srcY = int(yy * stepY);
+    value = srcBase[srcY * surfaceWidth + srcX];
+```
+
+At 2x: 24px surface → 12px canvas → 24px display. font가 24pt로 렌더링되었으므로 subsampling해도 12pt와 같은 품질.
+
 ### Z-order 보존
 
 텍스트는 여전히 **canvas R8UI FBO**에 다른 UI 요소와 섞여 그려진다. `_commandBuffers.rects`와 `_commandBuffers.transparent`에 동일한 depth 순서로 추가되며, depth peeling을 통한 투명도 처리도 정상 동작한다. 별도의 overlay 없이 기존 파이프라인을 그대로 사용하므로 Z-order 문제가 없다.
@@ -222,6 +236,7 @@ auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->unscaledFont, text);
 | `data/shaders/drawrect.frag` | TTF 전용 bilinear 경로: offset `0.5*(1-fZoom)`, contrast boost ×3 + hard cutoff 100, at 1x NEAREST | 모든 zoom에서 texel coverage + bitmap-style sharp edge |
 | `src/openrct2/drawing/Font.h` | `TTF_Font* unscaledFont` 필드 추가 | unscaled font storage |
 | `src/openrct2/drawing/ScrollingText.cpp` | `fontDesc->unscaledFont` 사용 | signboard text 원본 크기 유지 |
+| `src/openrct2/drawing/X8DrawingEngine.cpp` | `DrawTTFBitmapInternal`에 `scale` subsampling 추가 | Software renderer에서 TTF 2중 확대 버그 수정 |
 | `test/tests/TTFTests.cpp` | TTFReinitialise 안전성 테스트 | 테스트 커버리지 |
 
 ### 실제 동작: texel-to-pixel 매핑 (2x 예시)
@@ -237,7 +252,7 @@ Display (24px):            █████████████████�
 ### 변경 전후 diff 요약
 
 ```
-12 files changed, 195 insertions(+), 77 deletions(-)
+13 files changed, 219 insertions(+), 88 deletions(-)
 ```
 
 ## 코드 리뷰
