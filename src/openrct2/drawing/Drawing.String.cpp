@@ -492,9 +492,10 @@ namespace OpenRCT2::Drawing
             return;
         }
 
+        float scale = std::max(1.0f, Config::Get().general.windowScale);
         if (info.textDrawFlags.has(TextDrawFlag::noDraw))
         {
-            info.current.x += TTFGetWidthCacheGetOrAdd(fontDesc->font, text);
+            info.current.x += static_cast<int32_t>(TTFGetWidthCacheGetOrAdd(fontDesc->font, text) / scale);
             return;
         }
 
@@ -511,7 +512,7 @@ namespace OpenRCT2::Drawing
             IDrawingContext* dc = drawingEngine->GetDrawingContext();
             dc->DrawTTFBitmap(rt, info, surface, drawX, drawY, hintThresh);
         }
-        info.current.x += surface->w;
+        info.current.x += static_cast<int32_t>(surface->w / scale);
     }
 
 #endif // DISABLE_TTF

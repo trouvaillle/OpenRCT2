@@ -40,6 +40,7 @@ struct TTFFontDescriptor
     int32_t line_height;
     int32_t hinting_threshold;
     TTF_Font* font;
+    TTF_Font* unscaledFont;
 };
 
 struct TTFFontSetDescriptor

@@ -1527,7 +1527,7 @@ static constexpr const int16_t* kScrollPositions[kMaxModes] = {
     {
 #ifndef DISABLE_TTF
         auto fontDesc = TTFGetFontFromSpriteBase(FontStyle::tiny);
-        if (fontDesc->font == nullptr)
+        if (fontDesc->unscaledFont == nullptr)
         {
             setBitmapForSprite(text, scroll, bitmap, scrollPositionOffsets, colour);
             return;
@@ -1550,7 +1550,7 @@ static constexpr const int16_t* kScrollPositions[kMaxModes] = {
             }
         }
 
-        auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->font, ttfBuffer.c_str());
+        auto surface = TTFSurfaceCacheGetOrAdd(fontDesc->unscaledFont, ttfBuffer.c_str());
         if (surface == nullptr)
         {
             return;

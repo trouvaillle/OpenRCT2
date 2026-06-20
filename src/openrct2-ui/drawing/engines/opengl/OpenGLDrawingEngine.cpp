@@ -1179,10 +1179,11 @@ void OpenGLDrawingContext::DrawTTFBitmap(
         _ttfGlId = 0;
     }
 
+    float scale = std::max(1.0f, Config::Get().general.windowScale);
     int32_t drawOffsetX = 0;
     int32_t drawOffsetY = 0;
-    int32_t drawWidth = static_cast<uint16_t>(surface->w);
-    int32_t drawHeight = static_cast<uint16_t>(surface->h);
+    int32_t drawWidth = static_cast<int32_t>(surface->w / scale);
+    int32_t drawHeight = static_cast<int32_t>(surface->h / scale);
 
     int32_t left = x + drawOffsetX;
     int32_t top = y + drawOffsetY;
@@ -1225,7 +1226,7 @@ void OpenGLDrawingContext::DrawTTFBitmap(
             command.colour = static_cast<GLuint>(info.palette.shadowOutline);
             command.bounds = b;
             command.depth = _drawCount++;
-            command.zoom = 1.0f;
+            command.zoom = scale;
         }
     }
     if (info.colourFlags.has(ColourFlag::inset))
@@ -1241,7 +1242,7 @@ void OpenGLDrawingContext::DrawTTFBitmap(
         command.colour = static_cast<GLuint>(info.palette.shadowOutline);
         command.bounds = { left + 1, top + 1, right + 1, bottom + 1 };
         command.depth = _drawCount++;
-        command.zoom = 1.0f;
+        command.zoom = scale;
     }
     auto& cmdBuf = hintingThreshold > 0 ? _commandBuffers.transparent : _commandBuffers.rects;
     DrawRectCommand& command = cmdBuf.allocate();
@@ -1255,7 +1256,7 @@ void OpenGLDrawingContext::DrawTTFBitmap(
     command.colour = static_cast<GLuint>(info.palette.fill);
     command.bounds = { left, top, right, bottom };
     command.depth = _drawCount++;
-    command.zoom = 1.0f;
+    command.zoom = scale;
     #endif // DISABLE_TTF
 }
 

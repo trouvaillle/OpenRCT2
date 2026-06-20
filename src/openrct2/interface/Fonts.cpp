@@ -28,99 +28,99 @@ uint8_t const HINTING_THRESHOLD_MEDIUM = 60;
 
 // clang-format off
 TTFFontSetDescriptor TTFFontMSGothic = { {
-    { "msgothic.ttc", "MS PGothic", 12, 1,  0, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "msgothic.ttc", "MS PGothic", 12, 1,  0, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "msgothic.ttc", "MS PGothic",  9, 1,  1,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { "msgothic.ttc", "MS PGothic", 12, 1,  0, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "msgothic.ttc", "MS PGothic", 12, 1,  0, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "msgothic.ttc", "MS PGothic",  9, 1,  1,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontNotoSansMono = { {
-    { "NotoSansCJK-Regular.ttc", "Noto Sans Mono CJK JP", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "NotoSansCJK-Regular.ttc", "Noto Sans Mono CJK JP", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "NotoSansCJK-Regular.ttc", "Noto Sans Mono CJK JP",  9, 1, -2,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { "NotoSansCJK-Regular.ttc", "Noto Sans Mono CJK JP", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "NotoSansCJK-Regular.ttc", "Noto Sans Mono CJK JP", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "NotoSansCJK-Regular.ttc", "Noto Sans Mono CJK JP",  9, 1, -2,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontHiragano = { {
-    { u8"ヒラギノ丸ゴ ProN W4.ttc", "Hiragino Maru Gothic ProN", 11, 1,  0, 13, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { u8"ヒラギノ丸ゴ ProN W4.ttc", "Hiragino Maru Gothic ProN", 11, 1,  0, 13, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { u8"ヒラギノ丸ゴ ProN W4.ttc", "Hiragino Maru Gothic ProN",  9, 1,  1,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { u8"ヒラギノ丸ゴ ProN W4.ttc", "Hiragino Maru Gothic ProN", 11, 1,  0, 13, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { u8"ヒラギノ丸ゴ ProN W4.ttc", "Hiragino Maru Gothic ProN", 11, 1,  0, 13, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { u8"ヒラギノ丸ゴ ProN W4.ttc", "Hiragino Maru Gothic ProN",  9, 1,  1,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontMingLiu = { {
-    { "mingliu.ttc",  "MingLiU", 11,  1,  1, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "mingliu.ttc",  "MingLiU", 12,  1,  0, 15, HINTING_THRESHOLD_MEDIUM, nullptr },
-    {    "msjh.ttc", "JhengHei",  9, -1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { "mingliu.ttc",  "MingLiU", 11,  1,  1, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "mingliu.ttc",  "MingLiU", 12,  1,  0, 15, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    {    "msjh.ttc", "JhengHei",  9, -1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontHeiti = { {
-    { u8"华文黑体.ttf", "STHeiti", 11,  1,  1, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { u8"华文黑体.ttf", "STHeiti", 12,  1,  0, 15, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { u8"华文黑体.ttf", "STHeiti",  9, -1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { u8"华文黑体.ttf", "STHeiti", 11,  1,  1, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { u8"华文黑体.ttf", "STHeiti", 12,  1,  0, 15, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { u8"华文黑体.ttf", "STHeiti",  9, -1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontSimSun = { {
-    { "simsun.ttc", "SimSun", 11,  1, -1, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "simsun.ttc", "SimSun", 12,  1, -2, 15, HINTING_THRESHOLD_MEDIUM, nullptr },
-    {   "msyh.ttc",  "Microsoft YaHei",  9, -1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { "simsun.ttc", "SimSun", 11,  1, -1, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "simsun.ttc", "SimSun", 12,  1, -2, 15, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    {   "msyh.ttc",  "Microsoft YaHei",  9, -1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontLiHeiPro = { {
-    { u8"儷黑 Pro.ttf", "LiHei Pro", 11, 1,  0, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { u8"儷黑 Pro.ttf", "LiHei Pro", 12, 1,  0, 15, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { u8"儷黑 Pro.ttf", "LiHei Pro",  9, 1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { u8"儷黑 Pro.ttf", "LiHei Pro", 11, 1,  0, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { u8"儷黑 Pro.ttf", "LiHei Pro", 12, 1,  0, 15, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { u8"儷黑 Pro.ttf", "LiHei Pro",  9, 1, -1,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontGulim = { {
-    { "gulim.ttc", "Gulim", 12, 1, 0, 15, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "gulim.ttc", "Gulim", 12, 1, 0, 15, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "gulim.ttc", "Gulim", 10, 1, 0, 10, HINTING_DISABLED,         nullptr },
+    { "gulim.ttc", "Gulim", 12, 1, 0, 15, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "gulim.ttc", "Gulim", 12, 1, 0, 15, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "gulim.ttc", "Gulim", 10, 1, 0, 10, HINTING_DISABLED,         nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontMalgun = { {
-    { "malgun.ttf", "Malgun Gothic", 12, 1, -3, 15, HINTING_THRESHOLD_LOW, nullptr },
-    { "malgun.ttf", "Malgun Gothic", 12, 1, -3, 15, HINTING_THRESHOLD_LOW, nullptr },
-    { "malgun.ttf", "Malgun Gothic", 10, 1, -3, 10, HINTING_THRESHOLD_LOW, nullptr },
+    { "malgun.ttf", "Malgun Gothic", 12, 1, -3, 15, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "malgun.ttf", "Malgun Gothic", 12, 1, -3, 15, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "malgun.ttf", "Malgun Gothic", 10, 1, -3, 10, HINTING_THRESHOLD_LOW, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontNanum = { {
-    { "NanumGothic.ttf", "Nanum Gothic", 12, 1, -2, 15, HINTING_THRESHOLD_LOW, nullptr },
-    { "NanumGothic.ttf", "Nanum Gothic", 12, 1, -2, 15, HINTING_THRESHOLD_LOW, nullptr },
-    { "NanumGothic.ttf", "Nanum Gothic", 10, 1, -2, 10, HINTING_DISABLED, nullptr },
+    { "NanumGothic.ttf", "Nanum Gothic", 12, 1, -2, 15, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "NanumGothic.ttf", "Nanum Gothic", 12, 1, -2, 15, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "NanumGothic.ttf", "Nanum Gothic", 10, 1, -2, 10, HINTING_DISABLED, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontArial = { {
-    { "arial.ttf", "Arial", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr },
-    { "arial.ttf", "Arial", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr },
-    { "arial.ttf", "Arial", 10, 0, -1,  9, HINTING_THRESHOLD_LOW, nullptr },
+    { "arial.ttf", "Arial", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "arial.ttf", "Arial", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "arial.ttf", "Arial", 10, 0, -1,  9, HINTING_THRESHOLD_LOW, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontArialUnicode = { {
-    { "arialuni.ttf", "Arial Unicode MS", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr },
-    { "arialuni.ttf", "Arial Unicode MS", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr },
-    { "arialuni.ttf", "Arial Unicode MS", 10, 0, -1,  9, HINTING_THRESHOLD_LOW, nullptr },
+    { "arialuni.ttf", "Arial Unicode MS", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "arialuni.ttf", "Arial Unicode MS", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "arialuni.ttf", "Arial Unicode MS", 10, 0, -1,  9, HINTING_THRESHOLD_LOW, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontMicroHei = { {
-    { "wqy-microhei.ttc", "WenQuanYi Micro Hei", 11,  1, -1, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "wqy-microhei.ttc", "WenQuanYi Micro Hei", 11,  1, -2, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "wqy-microhei.ttc", "WenQuanYi Micro Hei", 10, -1, -1,  10, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { "wqy-microhei.ttc", "WenQuanYi Micro Hei", 11,  1, -1, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "wqy-microhei.ttc", "WenQuanYi Micro Hei", 11,  1, -2, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "wqy-microhei.ttc", "WenQuanYi Micro Hei", 10, -1, -1,  10, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontRoboto = { {
-    { "Roboto-Regular.ttf", "Roboto", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr },
-    { "Roboto-Regular.ttf", "Roboto", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr },
-    { "Roboto-Regular.ttf", "Roboto", 10, 0, -1,  9, HINTING_THRESHOLD_LOW, nullptr },
+    { "Roboto-Regular.ttf", "Roboto", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "Roboto-Regular.ttf", "Roboto", 12, 0, -1, 12, HINTING_THRESHOLD_LOW, nullptr, nullptr },
+    { "Roboto-Regular.ttf", "Roboto", 10, 0, -1,  9, HINTING_THRESHOLD_LOW, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontNotoSansCJK = { {
-    { "NotoSansCJK-Regular.ttc", "Noto Sans CJK", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "NotoSansCJK-Regular.ttc", "Noto Sans CJK", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "NotoSansCJK-Regular.ttc", "Noto Sans CJK",  9, 1, -2,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { "NotoSansCJK-Regular.ttc", "Noto Sans CJK", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "NotoSansCJK-Regular.ttc", "Noto Sans CJK", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "NotoSansCJK-Regular.ttc", "Noto Sans CJK",  9, 1, -2,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 
 TTFFontSetDescriptor TTFFontNotoNaskhArabic = { {
-    { "NotoNaskhArabic-Regular.ttf", "Noto Naskh Arabic", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "NotoNaskhArabic-Regular.ttf", "Noto Naskh Arabic", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr },
-    { "NotoNaskhArabic-Regular.ttf", "Noto Naskh Arabic",  9, 1, -2,  9, HINTING_THRESHOLD_MEDIUM, nullptr },
+    { "NotoNaskhArabic-Regular.ttf", "Noto Naskh Arabic", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "NotoNaskhArabic-Regular.ttf", "Noto Naskh Arabic", 12, 1, -3, 14, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
+    { "NotoNaskhArabic-Regular.ttf", "Noto Naskh Arabic",  9, 1, -2,  9, HINTING_THRESHOLD_MEDIUM, nullptr, nullptr },
 } };
 // clang-format on
 #endif // DISABLE_TTF
@@ -151,13 +151,13 @@ static bool LoadCustomConfigFont(LocalisationService& localisationService)
     static TTFFontSetDescriptor TTFFontCustom = { {
         { Config::Get().fonts.fileName.c_str(), Config::Get().fonts.fontName.c_str(), Config::Get().fonts.sizeTiny,
           Config::Get().fonts.offsetX, Config::Get().fonts.offsetY, Config::Get().fonts.heightTiny,
-          Config::Get().fonts.hintingThreshold, nullptr },
+          Config::Get().fonts.hintingThreshold, nullptr, nullptr },
         { Config::Get().fonts.fileName.c_str(), Config::Get().fonts.fontName.c_str(), Config::Get().fonts.sizeSmall,
           Config::Get().fonts.offsetX, Config::Get().fonts.offsetY, Config::Get().fonts.heightSmall,
-          Config::Get().fonts.hintingThreshold, nullptr },
+          Config::Get().fonts.hintingThreshold, nullptr, nullptr },
         { Config::Get().fonts.fileName.c_str(), Config::Get().fonts.fontName.c_str(), Config::Get().fonts.sizeMedium,
           Config::Get().fonts.offsetX, Config::Get().fonts.offsetY, Config::Get().fonts.heightMedium,
-          Config::Get().fonts.hintingThreshold, nullptr },
+          Config::Get().fonts.hintingThreshold, nullptr, nullptr },
     } };
 
     TTFDispose();
