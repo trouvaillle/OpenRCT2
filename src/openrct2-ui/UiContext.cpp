@@ -40,7 +40,6 @@
 #include <openrct2/core/String.hpp>
 #include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/IDrawingEngine.h>
-#include <openrct2/drawing/TTF.h>
 #include <openrct2/interface/Chat.h>
 #include <openrct2/platform/Platform.h>
 #include <openrct2/scenes/title/TitleSequencePlayer.h>
@@ -616,16 +615,6 @@ public:
         }
         snprintf(scaleQualityBuffer, sizeof(scaleQualityBuffer), "%d", static_cast<int32_t>(scaleQuality));
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, scaleQualityBuffer);
-
-        {
-            static float lastWindowScale = 0;
-            float currentScale = Config::Get().general.windowScale;
-            if (currentScale != lastWindowScale)
-            {
-                lastWindowScale = currentScale;
-                TTFReinitialise();
-            }
-        }
 
         int32_t width, height;
         SDL_GetWindowSize(_window, &width, &height);

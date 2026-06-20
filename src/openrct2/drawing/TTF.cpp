@@ -19,7 +19,6 @@
     #pragma clang diagnostic pop
 
     #include "../OpenRCT2.h"
-    #include "../config/Config.h"
     #include "../core/EnumUtils.hpp"
     #include "../core/Numerics.hpp"
     #include "../core/String.hpp"
@@ -117,9 +116,7 @@ bool TTFInitialise()
             return false;
         }
 
-        float scale = std::max(1.0f, Config::Get().general.windowScale);
-        int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);
-        fontDesc->font = TTFOpenFont(fontPath.c_str(), scaledSize);
+        fontDesc->font = TTFOpenFont(fontPath.c_str(), fontDesc->ptSize);
         if (fontDesc->font == nullptr)
         {
             LOG_VERBOSE("Unable to load '%s'", fontPath.c_str());
@@ -157,49 +154,6 @@ void TTFDispose()
     TTF_Quit();
 
     _ttfInitialised = false;
-}
-
-void TTFReinitialise()
-{
-    DrawingUniqueLock<std::mutex> lock(_mutex);
-
-    if (!_ttfInitialised)
-        return;
-
-    TTFSurfaceCacheDisposeAll();
-    TTFGetWidthCacheDisposeAll();
-
-    for (int32_t i = 0; i < FontStyleCount; i++)
-    {
-        TTFFontDescriptor* fontDesc = &(gCurrentTTFFontSet->size[i]);
-        if (fontDesc->font != nullptr)
-        {
-            TTFCloseFont(fontDesc->font);
-            fontDesc->font = nullptr;
-        }
-    }
-
-    for (int32_t i = 0; i < FontStyleCount; i++)
-    {
-        TTFFontDescriptor* fontDesc = &(gCurrentTTFFontSet->size[i]);
-
-        auto fontPath = Platform::GetFontPath(*fontDesc);
-        if (fontPath.empty())
-        {
-            LOG_VERBOSE("Unable to find font '%s'", fontDesc->font_name);
-            continue;
-        }
-
-        float scale = std::max(1.0f, Config::Get().general.windowScale);
-        int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);
-        fontDesc->font = TTFOpenFont(fontPath.c_str(), scaledSize);
-        if (fontDesc->font == nullptr)
-        {
-            LOG_VERBOSE("Unable to load '%s'", fontPath.c_str());
-        }
-    }
-
-    TTFToggleHinting(true);
 }
 
 static TTF_Font* TTFOpenFont(const utf8* fontPath, int32_t ptSize)
@@ -414,10 +368,6 @@ bool TTFInitialise()
 }
 
 void TTFDispose()
-{
-}
-
-void TTFReinitialise()
 {
 }
 
