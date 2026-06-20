@@ -24,11 +24,10 @@ OpenRCT2는 게임 내장 UI 확대 기능(`windowScale`)을 제공한다. 이 �
 ```cpp
 TTFFontSetDescriptor TTFFontGulim = { {
     { "gulim.ttc", "Gulim", 12, 1, 0, 15, HINTING_THRESHOLD_MEDIUM, nullptr },  // ← 12pt 고정
-    // ...
 } };
 ```
 
-이로 인해 2x 스케일에서도 12pt로 렌더링된 폰트가 960x540 캔버스에 그려진 후 2배 확대되어 24pt처럼 보이지만, 실제 디테일은 12pt에 불과한 현상이 발생한다.
+12pt 폰트가 960x540 캔버스(2x)에 그려진 후 24pt로 확대되면, 12px 데이터가 단순히 확대되어 디테일이 손실된다.
 
 ### 근본 원인 2: 캔버스 업스케일
 
@@ -45,27 +44,58 @@ _height = static_cast<int32_t>(height / Config::Get().general.windowScale);
 
 `FT_LOAD_DEFAULT`는 FreeType2에서 **임베디드 비트맵 스트라이크를 아웃라인보다 우선**한다. 한국어 폰트(Gulim, Malgun 등)는 12pt/12px에 최적화된 임베디드 비트맵을 내장하고 있어, 1x에서는 이 비트맵이 1:1 매핑되어 깔끔하게 보이지만 업스케일 시 비트맵 확대 아티팩트(줄/깨짐)가 발생한다.
 
+### 시도한 접근법과 교훈
+
+| 접근법 | 결과 | 문제점 |
+|--------|------|--------|
+| `ptSize *= windowScale` **단독** | 폰트가 너무 큼 (3x line height) | 캔버스 축소 + 폰트 확대의 **2중 적용** — 12pt→36pt on 640→360 → display에서 108pt |
+| `FT_LOAD_NO_BITMAP` **단독** | 세로줄은 없어졌지만 폰트가 흐림 | 12pt 아웃라인을 nearest-neighbor로 2x 업스케일 → soft outline이 blocky해져 흐려 보임 |
+
 ## 해결 방법
 
-### 최종 설계: `ptSize *= windowScale`
+### 최종 설계: ptSize 스케일 + quad 역보정 + fZoom
 
-두 가지 접근 방안 중 **최소 변경 + 최대 효과**를 위해 `ptSize`만 스케일링하는 방법을 선택했다:
+`ptSize`를 스케일링하여 고해상도 glyph texture를 생성하지만, quad 크기는 역보정하여 canvas 공간을 유지하고, fragment shader의 `fZoom` 파라미터로 texel 매핑을 조정한다.
+
+#### 1. 폰트 로딩 시 ptSize 스케일링
 
 ```cpp
-// src/openrct2/drawing/TTF.cpp:120-122 (TTFInitialise)
+// src/openrct2/drawing/TTF.cpp (TTFInitialise)
 float scale = std::max(1.0f, Config::Get().general.windowScale);
-int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);
+int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);  // 12pt → 24pt at 2x
 fontDesc->font = TTFOpenFont(fontPath.c_str(), scaledSize);
 ```
 
-2x 스케일에서 24pt로 폰트를 직접 로딩하므로:
-- 임베디드 12px 비트맵과 사이즈가 불일치 → FreeType2가 자동으로 **아웃라인 렌더링** 선택
-- 캔버스 업스케일이 아닌 **네이티브 해상도**로 렌더링
-- `FT_LOAD_NO_BITMAP` 등 FreeType 플래그 변경 불필요
+2x 스케일에서 24pt로 폰트를 직접 로딩 → glyph texture가 24px 고해상도로 생성됨. 임베디드 12px 비트맵과 사이즈 불일치로 FreeType2가 아웃라인 렌더링을 자동 선택.
 
-### 동적 스케일 변경 대응: `TTFReinitialise()`
+#### 2. Quad bounds 역보정 (`DrawTTFBitmap`)
 
-`Ctrl+Plus/Minus` 등으로 실시간 스케일 변경 시 폰트를 재로딩하는 함수 추가:
+```cpp
+// src/openrct2-ui/.../OpenGLDrawingEngine.cpp (DrawTTFBitmap)
+int32_t drawWidth  = static_cast<int32_t>(surface->w / scale);  // 24px → 12px canvas 공간
+int32_t drawHeight = static_cast<int32_t>(surface->h / scale);
+```
+
+24px glyph texture를 12px quad에 매핑 → canvas에서 차지하는 공간은 12pt와 동일.
+
+#### 3. Cursor advance 역보정 (`drawStringRawTTF`)
+
+```cpp
+// src/openrct2/drawing/Drawing.String.cpp
+info.current.x += static_cast<int32_t>(surface->w / scale);  // 24px advance → 12px canvas advance
+```
+
+텍스트 레이아웃이 canvas 공간에서 깨지지 않도록 cursor advance도 역보정.
+
+#### 4. fZoom = windowScale
+
+```cpp
+command.zoom = scale;  // 2.0 at 2x
+```
+
+Fragment shader에서 `position = (fragCoord - fPosition) * fZoom` — zoom=2.0이면 canvas pixel당 2 texel을 샘플링하여 24px texture를 12px quad에 full coverage.
+
+#### 5. 동적 스케일 변경 대응: `TTFReinitialise()`
 
 ```cpp
 void TTFReinitialise()
@@ -74,11 +104,10 @@ void TTFReinitialise()
 }
 ```
 
-호출은 `TriggerResize()`에 `windowScale` delta gate 와 함께 추가하여, 실제 스케일 변경 시에만 폰트를 리로드하도록 최적화:
+`TriggerResize()`에 `windowScale` delta gate 와 함께 추가:
 
 ```cpp
 static float lastWindowScale = 0;
-float currentScale = Config::Get().general.windowScale;
 if (currentScale != lastWindowScale)
 {
     lastWindowScale = currentScale;
@@ -86,53 +115,79 @@ if (currentScale != lastWindowScale)
 }
 ```
 
-### 제외한 접근법 (리뷰 결과 반영)
+#### Shader pipeline 상세
 
-| 접근법 | 제외 사유 |
-|--------|----------|
-| `FT_LOAD_NO_BITMAP` 추가 | `ptSize` 스케일링만으로도 임베디드 비트맵 문제 해결. 불필요한 FreeType 동작 변경 |
-| `enlargedUi`(boolean) 수정 | `enlargedUi`는 폰트와 무관한 위젯 크기 전용 설정. `windowScale`과 별개 |
+Vertex shader (`drawrect.vert`)는 bounds를 NDC로 변환하고 `fZoom`을 passthrough:
+```glsl
+fPosition = vBounds.xy;  // quad top-left in canvas coords
+fZoom = vZoom;           // windowScale (e.g. 2.0)
+pos = pos / vec2(uScreenSize);  // NDC (uScreenSize = canvas size)
+```
+
+Fragment shader (`drawrect.frag`)에서 텍스처 좌표 계산:
+```glsl
+vec2 fragCoord = vec2(floor(gl_FragCoord.x), fScreenHeight - floor(gl_FragCoord.y) - 1);
+vec2 position = (fragCoord - fPosition) * fZoom;
+// position ranges (0..12) × 2.0 = 0..24 → full 24px texture coverage
+float colourU = (fTexColour.x + position.x) / fTexColour.z;
+float colourV = (fTexColour.y + position.y) / fTexColour.w;
+```
+
+At 2x: 12px quad × zoom=2.0 → `position` range 0..24 → 24px texture fully sampled → canvas upscaled to display → 24px crisp text.
+
+### Z-order 보존
+
+텍스트는 여전히 **canvas R8UI FBO**에 다른 UI 요소와 섞여 그려진다. `_commandBuffers.rects`와 `_commandBuffers.transparent`에 동일한 depth 순서로 추가되며, depth peeling을 통한 투명도 처리도 정상 동작한다. 별도의 overlay 없이 기존 파이프라인을 그대로 사용하므로 Z-order 문제가 없다.
+
+### 문제점 보완
+
+| 문제 | ptSize 단독 | FT_LOAD_NO_BITMAP 단독 | **최종(zoom+bounds)** |
+|------|------------|----------------------|----------------------|
+| 폰트 크기 | **3x line height** (너무 큼) | 정상 | **정상** (canvas 공간 유지) |
+| 선명도 | 선명 (outline) | **흐림** (12pt outline upscale) | **선명** (고해상도 glyph) |
+| Z-order | 문제 없음 | 문제 없음 | **문제 없음** (동일 FBO) |
+| 런타임 변경 | TTFReinitialise 필요 | 불필요 | **TTFReinitialise** |
 
 ## 결과
 
 ### 정상 동작 예시
 
-| windowScale | 이전 | 이후 |
-|-------------|------|------|
-| 1.0x | Gulim 12pt → 1920x1080 → 선명 | **동일** (변화 없음) |
-| 1.5x | Gulim 12pt → 853x480 → 1.5x 업스케일 → **깨짐** | Gulim 18pt → 1280x853캔버스 → 1.5x → **선명** |
-| 2.0x | Gulim 12pt → 960x540 → 2x 업스케일 → **깨짐** | Gulim 24pt → 960x540 → 2x → **선명** |
-| 0.5x | Gulim 12pt (1.0f floor) → 3840x2160 캔버스 | **동일** (1.0f 이하로는 스케일 다운되지 않음) |
+| windowScale | 동작 |
+|-------------|------|
+| 1.0x | 12pt glyph → 12px texture → 12px quad on 1920x1080 canvas → **12px display** (변화 없음) |
+| 1.5x | 18pt glyph → 18px texture → 12px quad on 1280x720 canvas → **18px display** |
+| 2.0x | 24pt glyph → 24px texture → 12px quad on 960x540 canvas → **24px display** (선명) |
+| 0.5x | cap at 1.0x (12pt, 동일) |
 
 ### 변경 파일
 
 | 파일 | 변경 | 영향 범위 |
 |------|------|----------|
-| `src/openrct2/drawing/TTF.cpp` | `#include "../config/Config.h"` 추가, `ptSize` 스케일링, `TTFReinitialise()` 추가 | TTF 폰트 로딩/재로딩 |
-| `src/openrct2/drawing/TTF.h` | `TTFReinitialise()` 선언 | 공개 API 확장 |
-| `src/openrct2-ui/UiContext.cpp` | `#include <openrct2/drawing/TTF.h>` 추가, delta-gated `TTFReinitialise()` 호출 | UI 컨텍스트 |
-| `test/tests/TTFTests.cpp` | **신규**: `TTFReinitialise` 안전성 테스트 | 테스트 커버리지 |
-| `test/tests/CMakeLists.txt` | `TTFTests.cpp` 등록 | 빌드 시스템 |
+| `src/openrct2/drawing/TTF.cpp` | `ptSize` 스케일링, `TTFReinitialise()` 구현 | 폰트 로딩/재로딩 |
+| `src/openrct2/drawing/TTF.h` | `TTFReinitialise()` 선언 | 공개 API |
+| `src/openrct2/drawing/Drawing.String.cpp` | cursor advance `/ scale` | 텍스트 레이아웃 canvas 공간 보정 |
+| `src/openrct2-ui/.../OpenGLDrawingEngine.cpp` | `bounds /= scale`, `zoom = scale` | quad 크기 + shader texel 보정 |
+| `src/openrct2-ui/UiContext.cpp` | `#include <TTF.h>`, delta-gated `TTFReinitialise()` | 런타임 스케일 변경 |
+| `data/shaders/drawrect.frag` | (수정 없음) | `fZoom` 기존 지원 |
+| `test/tests/TTFTests.cpp` | TTFReinitialise 안전성 테스트 | 테스트 커버리지 |
+
+### 실제 동작: texel-to-pixel 매핑 (2x 예시)
+
+```
+Glyph texture (24px):      ████████████████████████  ← 24 texels
+                                ↓ zoom = 2.0
+Canvas quad (12px):        ████████████              ← 12 fragments, 각각 2 texel 샘플
+                                ↓ canvas 2x upscale (GL_LINEAR)
+Display (24px):            ████████████████████████  ← 24px crisp
+```
 
 ### 변경 전후 diff 요약
 
 ```
- 4 files changed, 49 insertions(+), 2 deletions(-)
- + 1 test file (25 lines)
+ 7 files changed, 96 insertions(+), 10 deletions(-)
 ```
 
 ## 코드 리뷰
-
-### 리뷰 결과 (모의 코드 오너 리뷰)
-
-| 우선순위 | 지적 사항 | 조치 |
-|----------|-----------|------|
-| **HIGH** | `TTFReinitialise`에서 `TTFOpenFont` null 반환 시 댕글링 포인터 | Null 체크 + `LOG_VERBOSE` 추가 |
-| **HIGH** | 폰트 경로(`GetFontPath`) empty 시 무시 → `font->font == nullptr` | `continue` + 로깅 추가 |
-| MEDIUM | `FT_LOAD_NO_BITMAP`은 bitmap-only 폰트에서 `FT_Load_Glyph` 실패 유발 | 불필요 판단, **제거** |
-| MEDIUM | `TTFSDLPort.cpp` 주석(embedded bitmap 선호)과 모순 | 변경 자체를 제거하여 주석과 일치 유지 |
-| LOW | `TriggerResize()`가 모든 config 변경 시 호출되어 불필요한 폰트 리로드 | `windowScale` delta gate 추가 |
-| LOW | `std::max(1.0f, ...)`가 sub-1x 스케일에서 폰트 크기 고정 | 현재 `windowScale` 범위(0.5~5.0)에서 sub-1x는 UI 축소 목적이므로 적절 |
 
 ### 적용한 코딩 컨벤션
 
@@ -140,21 +195,21 @@ if (currentScale != lastWindowScale)
 - `LOG_VERBOSE` — 기존 `TTFInitialise`와 일관된 에러 로깅
 - `static float lastWindowScale` — 별도 상태 관리 없이 최소한의 변경
 - `DISABLE_TTF` 가드 — stub 함수로 `#else` 블록에도 추가
-- Include ordering — `<openrct2/drawing/TTF.h>`를 `IDrawingEngine.h` 다음에 알파벳 순으로 배치
+- Include ordering — `<openrct2/drawing/TTF.h>`를 `IDrawingEngine.h` 다음에 배치
+- `std::max(1.0f, scale)` — sub-1x 스케일에서 폰트가 너무 작아지지 않도록 보호
+
+### 리뷰 포인트
+
+1. `TTFReinitialise` null 체크 — `TTFOpenFont` 실패 시에도 `continue`로 진행
+2. `surface->w`를 직접 변경하지 않고 지역 변수로 `/ scale` — 캐시 무결성 유지
+3. 정수 텍스처(`usampler2DArray`)의 NEAREST 필터링 — 분수 스케일(1.5x)에서 일부 texel 누락 가능성 있으나, 12px→18px upscale 대비 현저히 개선됨
 
 ## 후속 이슈
 
-### 잠재적 개선 사항
+1. **분수 스케일 texel 필터링**: `usampler2DArray`는 LINEAR 필터링 미지원. TTF 전용 `sampler2D`(R8 비정수)를 도입하면 분수 스케일에서도 완전한 bilinear 보간 가능.
 
-1. **Sub-1x 폰트 스케일링**: 현재 `std::max(1.0f, ...)`로 1.0x 이하에서는 폰트 크기가 고정됨. 0.5x 스케일에서 폰트까지 축소하려면 `ptSize * windowScale`에서 floor 제거 필요 (단, 12pt * 0.5 = 6pt는 FreeType에서 너무 작아 가독성 문제 가능).
+2. **캐시 카운트 언더플로우** (기존 버그): `TTFSurfaceCacheDisposeAll()`이 빈 슬롯에서도 `_ttfSurfaceCacheCount--`를 실행. 디버그 전용 통계이므로 기능적 영향은 없으나, 추후 정리 필요.
 
-2. **모든 TTF 폰트에 일괄 적용**: 한국어뿐 아니라 일본어, 중국어, 아랍어 등 모든 TTF 사용 언어에 동일한 효과가 적용됨. 각 언어별 `ptSize`가 달라(10~12pt) 스케일링 비율은 동일하지만 절대 크기는 언어별로 다를 수 있음.
+3. **`TTFTests.cpp` 확장**: 현재는 `TTFReinitialise()`의 초기화 전 안전성만 테스트. 실제 폰트 로딩/렌더링 테스트는 FreeType 의존성으로 인해 환경 구성이 필요.
 
-3. **캐시 카운트 언더플로우** (기존 버그): `TTFSurfaceCacheDisposeAll()`이 빈 슬롯에서도 `_ttfSurfaceCacheCount--`를 실행하여 언더플로우 발생. 디버그 전용 통계이므로 기능적 영향은 없으나, 추후 정리 필요.
-
-4. **`TTFTests.cpp` 확장**: 현재는 `TTFReinitialise()`의 초기화 전 안전성만 테스트. `cmake -B build -DWITH_TESTS=ON` 으로 빌드 후 실행 가능 (`ctest -R TTF`). 실제 폰트 로딩/렌더링 테스트는 FreeType 의존성으로 인해 테스트 환경 구성이 필요.
-
-### 현재 환경
-
-- cmake, msbuild 등 빌드 도구 미설치로 테스트 실행 불가
-- VS Code + VS Build Tools 환경에서 `cmake -B build -DWITH_TESTS=ON; cmake --build build --target OpenRCT2Tests` 로 테스트 빌드/실행 가능
+4. **Sub-1x 폰트 스케일링**: 현재 `std::max(1.0f, ...)`로 1.0x 이하에서는 폰트 크기가 고정됨. 0.5x 스케일에서 폰트까지 축소하려면 floor 제거 필요.
