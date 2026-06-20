@@ -600,7 +600,7 @@ static FT_Error Load_Glyph(TTF_Font* font, uint16_t ch, c_glyph* cached, int wan
     {
         cached->index = FT_Get_Char_Index(face, ch);
     }
-    error = FT_Load_Glyph(face, cached->index, FT_LOAD_DEFAULT | font->hinting);
+    error = FT_Load_Glyph(face, cached->index, FT_LOAD_DEFAULT | FT_LOAD_NO_BITMAP | font->hinting);
     if (error)
     {
         return error;
@@ -688,7 +688,8 @@ static FT_Error Load_Glyph(TTF_Font* font, uint16_t ch, c_glyph* cached, int wan
             FT_Glyph_Stroke(&bitmap_glyph, stroker, 1 /* delete the original glyph */);
             FT_Stroker_Done(stroker);
             /* Render the glyph */
-            error = FT_Glyph_To_Bitmap(&bitmap_glyph, mono ? ft_render_mode_mono : ft_render_mode_normal, 0, 1);
+            FT_Render_Mode render_mode = (mono || font->hinting == FT_LOAD_TARGET_ALT(FT_RENDER_MODE_MONO)) ? ft_render_mode_mono : ft_render_mode_normal;
+            error = FT_Glyph_To_Bitmap(&bitmap_glyph, render_mode, 0, 1);
             if (error)
             {
                 FT_Done_Glyph(bitmap_glyph);
@@ -699,7 +700,8 @@ static FT_Error Load_Glyph(TTF_Font* font, uint16_t ch, c_glyph* cached, int wan
         else
         {
             /* Render the glyph */
-            error = FT_Render_Glyph(glyph, mono ? ft_render_mode_mono : ft_render_mode_normal);
+            FT_Render_Mode render_mode = (mono || font->hinting == FT_LOAD_TARGET_ALT(FT_RENDER_MODE_MONO)) ? ft_render_mode_mono : ft_render_mode_normal;
+            error = FT_Render_Glyph(glyph, render_mode);
             if (error)
             {
                 return error;
