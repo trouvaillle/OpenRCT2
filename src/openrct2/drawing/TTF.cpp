@@ -184,11 +184,18 @@ void TTFReinitialise()
         TTFFontDescriptor* fontDesc = &(gCurrentTTFFontSet->size[i]);
 
         auto fontPath = Platform::GetFontPath(*fontDesc);
-        if (!fontPath.empty())
+        if (fontPath.empty())
         {
-            float scale = std::max(1.0f, Config::Get().general.windowScale);
-            int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);
-            fontDesc->font = TTFOpenFont(fontPath.c_str(), scaledSize);
+            LOG_VERBOSE("Unable to find font '%s'", fontDesc->font_name);
+            continue;
+        }
+
+        float scale = std::max(1.0f, Config::Get().general.windowScale);
+        int32_t scaledSize = static_cast<int32_t>(fontDesc->ptSize * scale);
+        fontDesc->font = TTFOpenFont(fontPath.c_str(), scaledSize);
+        if (fontDesc->font == nullptr)
+        {
+            LOG_VERBOSE("Unable to load '%s'", fontPath.c_str());
         }
     }
 

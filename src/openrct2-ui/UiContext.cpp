@@ -617,7 +617,15 @@ public:
         snprintf(scaleQualityBuffer, sizeof(scaleQualityBuffer), "%d", static_cast<int32_t>(scaleQuality));
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, scaleQualityBuffer);
 
-        TTFReinitialise();
+        {
+            static float lastWindowScale = 0;
+            float currentScale = Config::Get().general.windowScale;
+            if (currentScale != lastWindowScale)
+            {
+                lastWindowScale = currentScale;
+                TTFReinitialise();
+            }
+        }
 
         int32_t width, height;
         SDL_GetWindowSize(_window, &width, &height);
