@@ -48,19 +48,40 @@ void main()
     uint texel;
     if ((fFlags & FLAG_NO_TEXTURE) == 0)
     {
-        float colourU = (fTexColour.x + position.x) / fTexColour.z;
-        float colourV = (fTexColour.y + position.y) / fTexColour.w;
-        texel = texture(uTexture, vec3(colourU, colourV, fTexColourAtlas)).r;
-        if (texel == 0u)
-        {
-            discard;
-        }
         if ((fFlags & FLAG_TTF_TEXT) == 0)
         {
+            float colourU = (fTexColour.x + position.x) / fTexColour.z;
+            float colourV = (fTexColour.y + position.y) / fTexColour.w;
+            texel = texture(uTexture, vec3(colourU, colourV, fTexColourAtlas)).r;
+            if (texel == 0u)
+            {
+                discard;
+            }
             texel += fColour;
         }
         else
         {
+            vec2 unscaled = vec2(gl_FragCoord.x, fScreenHeight - gl_FragCoord.y - 1);
+            vec2 texelPos = fTexColour.xy + (unscaled - fPosition) * fZoom - 0.5;
+            vec2 f = fract(texelPos);
+            ivec2 base = ivec2(floor(texelPos));
+            ivec2 maxCoord = ivec2(fTexColour.z, fTexColour.w) - 2;
+            base = clamp(base, ivec2(0), maxCoord);
+
+            uint tl = texelFetch(uTexture, ivec3(base.x, base.y, fTexColourAtlas), 0).r;
+            uint tr = texelFetch(uTexture, ivec3(base.x + 1, base.y, fTexColourAtlas), 0).r;
+            uint bl = texelFetch(uTexture, ivec3(base.x, base.y + 1, fTexColourAtlas), 0).r;
+            uint br = texelFetch(uTexture, ivec3(base.x + 1, base.y + 1, fTexColourAtlas), 0).r;
+
+            float top = mix(float(tl), float(tr), f.x);
+            float bot = mix(float(bl), float(br), f.x);
+            texel = uint(mix(top, bot, f.y));
+
+            if (texel == 0u)
+            {
+                discard;
+            }
+
             uint hint_thresh = uint(fFlags & 0xff00) >> 8;
             if (hint_thresh > 0u)
             {
