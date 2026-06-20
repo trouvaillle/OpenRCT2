@@ -83,7 +83,7 @@ static void TTFToggleHinting(bool)
     {
         TTFFontDescriptor* fontDesc = &(gCurrentTTFFontSet->size[i]);
         bool use_hinting = Config::Get().fonts.enableHinting && fontDesc->hinting_threshold;
-        TTF_SetFontHinting(fontDesc->font, use_hinting ? 2 : 0);
+        TTF_SetFontHinting(fontDesc->font, use_hinting ? 1 : 0);
     }
 
     if (_ttfSurfaceCacheCount)
